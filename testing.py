@@ -1,21 +1,16 @@
+#this script is mainly for testing 
+#also for experoimenting or addinf new fieatures (testing plm)
+#every functioning version will be coppied in working_pulse_program.py
+
 import csv
 import crcmod
 import matplotlib.pyplot as plt
 import numpy as np
 
-#TO IMPLEMENT!!!
-#to introduce the tick 1 byte = 200ps for the ppg512
-#to create the gaussian pulse aaaaaand
-#to normalize it and translate it with an input value
-
-# 512bytes * 200ps = 102.4ns
-# t = input(int()) --> (as in pulse duration)
-# start_offset = input(int()) --> what time to play after being triggered --> beforehand should eliminate 
-# all the null values and rewrite the csv file
-
-# it should also add the crc sum value at the end????
-
-#maybe to make it more intuitive the input should be in time and the offset also
+# Constants
+TOTAL_BYTES = 512           # Max bytes per pulse
+BYTE_TIME_NS = 0.2          # Each byte = 0.2ns
+FIXED_WIDTH = 12            # Width of waveform in units (arbitrary)
 
 def graph(num_points: int,
           func,
@@ -24,22 +19,21 @@ def graph(num_points: int,
           x_end: float = 10.0):
     x = np.linspace(x_start, x_end, num_points)
     y = func(x)
+    #debug
+    print("Minimum y / Maximum y =", y.min() / y.max())
 
-    max_y = y.max()
+    y_norm = np.clip(np.floor((y / y.max()) * 255), 0, 255).astype(int)
 
-    # Normalize x to [0, 511]
-    x_norm = (x - x_start) * (511 / (x_end - x_start))
-
-    # Normalize y to [0, 511]
-    y_norm = np.floor((y / max_y) * 255)
-
-    y_norm = y_norm.astype(int)
-    plt.plot(x_norm,y_norm)
+    # Plot
+    plt.plot(x, y_norm)
+    plt.title("Normalized Gaussian Pulse")
+    plt.xlabel("Time (arbitrary units)")
+    plt.ylabel("Amplitude (0-255)")
+    plt.grid(True)
     plt.show()
-    y_hex = ['0x{:02X}'.format(val) for val in y_norm]
-
-
-
+    #debug
+    print("length of y_norm = ", len(y_norm))
+    # Write to CSV
     with open(output_csv, 'w', newline='') as f:
         writer = csv.writer(f, delimiter=';')
         writer.writerow(y_norm)
@@ -51,44 +45,49 @@ def compute_crc_from_csv(csv_file: str):
     amplitude = bytearray()
 
     with open(csv_file, 'r') as f:
-        reader = csv.reader(f)
-        header_skipped = False
+        reader = csv.reader(f, delimiter=';')
         for row in reader:
-            if not header_skipped:
-                header_skipped = True
-                continue
-            if len(row) < 2:
-                continue
-            try:
-                y_value = int(row[1])  # y is the second column
-                amplitude.append(y_value & 0xFF)
-                amplitude.append(0)  # zero-padding byte
-            except ValueError:
-                print(f"Skipping invalid row: {row}")
+            for val in row:
+                try:
+                    y_val = int(val.strip())
+                    amplitude.append(y_val & 0xFF)
+                    amplitude.append(0)  # 0-padding byte
+                except ValueError:
+                    print(f"Skipping invalid value: {val}")
 
-    # CRC‑CCITT‑FALSE (poly=0x1021, init=0xFFFF, no-reflect, no-XORout)
+    # CRC‑CCITT‑FALSE config
     crc_func = crcmod.mkCrcFun(0x11021, initCrc=0xFFFF, rev=False, xorOut=0x0000)
     crc = crc_func(bytes(amplitude))
+
     print(f"CRC‑CCITT (0x1021, seed=0xFFFF): {hex(crc)}")
 
 
 def main():
-    # Part 1: Generate Gaussian waveform
-    mu = 2 #deplasare - (-) goes to left, (+) goes to right
-    sigma = 0.1
-    height = 1/(np.sqrt(2*np.pi*sigma*sigma))
+    # Inputs
+    t_pulse = int(input("Pulse duration (ns): "))
+    t_delay = int(input("Pulse delay (ns, max 102.4 - duration): "))
+
+    period = TOTAL_BYTES * BYTE_TIME_NS
+    ratio = FIXED_WIDTH / period
+    eps = 1e-4
+    #mu needs recalculation
+    mu = ratio * t_delay
+    if ratio<0.5:
+        mu = FIXED_WIDTH/2 - mu
+
+    sigma = ratio * t_pulse / (2 * np.sqrt(np.log(1 / eps)))
+    height = 1 / (np.sqrt(2 * np.pi * sigma ** 2))
 
     def gauss(x):
-        return height * np.exp(- ((x - mu)** 2) / (2 * sigma ** 2))
+        return height * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
 
     output_csv = 'waveform.csv'
-    graph(num_points=512,
+    graph(num_points=TOTAL_BYTES,
           func=gauss,
           output_csv=output_csv,
-          x_start=-4,
-          x_end=+4)
+          x_start=-FIXED_WIDTH / 2,
+          x_end=+FIXED_WIDTH / 2)
 
-    # Part 2: Compute CRC of y-values from waveform
     compute_crc_from_csv(output_csv)
 
 
