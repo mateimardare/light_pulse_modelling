@@ -1,3 +1,6 @@
+#this script is mainly for testing 
+#also for experoimenting or addinf new fieatures (testing plm)
+#every functioning version will be coppied in working_pulse_program.py
 
 import csv
 import crcmod
@@ -12,21 +15,33 @@ FIXED_WIDTH = 12            # Width of waveform in units (arbitrary)
 def graph(num_points: int,
           func,
           output_csv: str,
-          x_start: float = -10.0,
-          x_end: float = 10.0):
+          x_1fwhm,
+          x_2fwhm,
+          x_start,
+          x_end):
     x = np.linspace(x_start, x_end, num_points)
     y = func(x)
     #debug
     print("Minimum y / Maximum y =", y.min() / y.max())
-
+    x = np.linspace(0,102.4, 512)
     y_norm = np.clip(np.floor((y / y.max()) * 255), 0, 255).astype(int)
-
+    
     # Plot
     plt.plot(x, y_norm)
+    plt.axhline(y=y_norm.max()/2, color='red', linestyle='--', linewidth=0.5, label='FWHM')
+    plt.axvline(x=x_1fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
+    plt.axvline(x=x_2fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
     plt.title("Normalized Gaussian Pulse")
-    plt.xlabel("Time (arbitrary units)")
+    plt.xlabel("Time (ns)")
     plt.ylabel("Amplitude (0-255)")
-    plt.grid(True)
+    plt.minorticks_on()
+
+    # Major gridlines
+    plt.grid(visible=True, which='major', linestyle='-', linewidth=0.8, color='gray')
+
+    # Minor gridlines
+    plt.grid(visible=True, which='minor', linestyle='--', linewidth=0.5, color='lightgray')
+
     plt.show()
     #debug
     print("length of y_norm = ", len(y_norm))
@@ -61,27 +76,40 @@ def compute_crc_from_csv(csv_file: str):
 
 def main():
     # Inputs
-    t_pulse = int(input("Pulse duration (ns): "))
+    t_pulse = int(input("Pulse duration - FWHM (ns): "))
     t_delay = int(input("Pulse delay (ns, max 102.4 - duration): "))
 
     period = TOTAL_BYTES * BYTE_TIME_NS
     ratio = FIXED_WIDTH / period
     eps = 1e-4
-    #mu needs recalculation
-    mu = ratio * t_delay
+    #sigma is calculated in order to obtain the right FWHM width
+    sigma = ratio * t_pulse / (np.sqrt(8 *np.log(2)))
+    #we use sigma2 as a correction (without it, with only mu the pulse will only present the delay relative to the peak of the graph)
+    sigma2 = t_pulse / (np.sqrt(4* np.log(1 / eps)))
+    #debugging purpose calc
+    print("sigma2 = ", sigma2)
+    #
+    mu = ratio * (((((((((((((((((((t_delay))))))))))))))))))) + sigma2
+    #just for debugging now
+    x_1fwhm = (mu - sigma*np.sqrt(2*np.log(2)))/ratio
+    x_2fwhm = (mu + sigma*np.sqrt(2*np.log(2)))/ratio
+    print("width = ", (x_2fwhm-x_1fwhm))
     if ratio<0.5:
         mu = FIXED_WIDTH/2 - mu
+    else:
+        mu = mu - FIXED_WIDTH/2        
 
-    sigma = ratio * t_pulse / (2 * np.sqrt(np.log(1 / eps)))
     height = 1 / (np.sqrt(2 * np.pi * sigma ** 2))
 
     def gauss(x):
-        return height * np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
+        return height * np.exp(-((x + mu) ** 2) / (2 * sigma ** 2))
 
     output_csv = 'waveform.csv'
     graph(num_points=TOTAL_BYTES,
           func=gauss,
           output_csv=output_csv,
+          x_1fwhm = x_1fwhm,
+          x_2fwhm = x_2fwhm,
           x_start=-FIXED_WIDTH / 2,
           x_end=+FIXED_WIDTH / 2)
 
