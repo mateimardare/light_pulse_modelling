@@ -85,8 +85,11 @@ def main():
     #sigma is calculated in order to obtain the right FWHM width
     sigma = ratio * t_pulse / (np.sqrt(8 *np.log(2)))
     #we use sigma2 as a correction (without it, with only mu the pulse will only present the delay relative to the peak of the graph)
-    sigma2 = ratio * t_pulse / (np.sqrt(4* np.log(1 / eps)))
-    mu = ratio * t_delay + sigma2
+    sigma2 = t_pulse / (np.sqrt(4* np.log(1 / eps)))
+    #debugging purpose calc
+    print("sigma2 = ", sigma2)
+    #
+    mu = ratio * (((((((((((((((((((t_delay))))))))))))))))))) + sigma2
     #just for debugging now
     x_1fwhm = (mu - sigma*np.sqrt(2*np.log(2)))/ratio
     x_2fwhm = (mu + sigma*np.sqrt(2*np.log(2)))/ratio
