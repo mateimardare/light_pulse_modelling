@@ -8,18 +8,19 @@ sigq = 1
 def u(x: float | np.ndarray):
     return a / 2 * np.arccos(1 - 2 * np.exp(-x**2 / (2 * sigq)))
 
+def v(x: float | np.ndarray):
+    return a* np.arcsin(np.exp(-x*x/(4*sigq)))
 def du(x: float | np.ndarray):
     # Avoid invalid values due to sqrt of negative numbers
     with np.errstate(invalid='ignore'):
-        return a * x / np.sqrt(np.exp(-x**2 / (2 * sigq)) - 1)
+        return  - a * x / np.sqrt(np.exp(x**2 / (2 * sigq))-1)
 
 def main():
     x = np.linspace(-5, 5, 1000)
-    y = u(x)
-    dy = du(x)
-
-    plt.plot(x, y, color='blue', label='u(x)')
-    plt.plot(x, dy, color='red', label="u'(x)")
+    y1 = u(x)
+    y2 = v(x)
+    plt.plot(x, y1, color='blue', linestyle = '-', label='u(x)')
+    plt.plot(x, y2, color='red', linestyle = '--', label="v(x)")
 
     plt.minorticks_on()
 
