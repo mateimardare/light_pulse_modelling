@@ -1,7 +1,4 @@
-#this script is mainly for testing 
-#also for experoimenting or addinf new fieatures (testing plm)
-#every functioning version will be coppied in working_pulse_program.py
-
+#antet
 import csv
 import crcmod
 import matplotlib.pyplot as plt
