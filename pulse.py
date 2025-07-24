@@ -4,7 +4,7 @@ import numpy as np
 # Define constants
 a = 3 / np.pi
 sigq = 1
-CT = np.linspace(0.1, 1, 10)
+CT = np.linspace(0.1, 1, 10) #this ct value actually gives the maximum optical intensity that shall be reached
 
 def u(x: float | np.ndarray, ct: float):
     return a / 2 * np.arccos(1 - 2 * ct * np.exp(-x**2 / (2 * sigq)))

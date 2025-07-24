@@ -1,4 +1,4 @@
-#this script is mainly for testing 
+#this script is mainly for testing comm
 #also for experoimenting or addinf new fieatures (testing plm)
 #every functioning version will be coppied in working_pulse_program.py
 
@@ -52,7 +52,6 @@ def graph(num_points: int,
 
     print(f"Wrote {num_points} samples to {output_csv}")
 
-
 def compute_crc_from_csv(csv_file: str):
     amplitude = bytearray()
 
@@ -71,8 +70,7 @@ def compute_crc_from_csv(csv_file: str):
     crc_func = crcmod.mkCrcFun(0x11021, initCrc=0xFFFF, rev=False, xorOut=0x0000)
     crc = crc_func(bytes(amplitude))
 
-    print(f"CRC‑CCITT (0x1021, seed=0xFFFF): {hex(crc)}")
-
+    print(f"CRC‑CCITT (0x1021, seed=0xFFFF): {hex(crc)}")    
 
 def main():
     # Inputs
