@@ -12,13 +12,17 @@ TOTAL_BYTES = 512           # Max bytes per pulse
 BYTE_TIME_NS = 0.2          # Each byte = 0.2ns
 FIXED_WIDTH = 12            # Width of waveform in units (arbitrary)
 
+a = 3/np.pi
+ct = 1 #VERY IMPORTANT FOR OPTICAL INTENSITY
+
 def graph(num_points: int,
           func,
           output_csv: str,
           x_1fwhm,
           x_2fwhm,
           x_start,
-          x_end):
+          x_end,
+          name: str):
     x = np.linspace(x_start, x_end, num_points)
     y = func(x)
     #debug
@@ -31,7 +35,7 @@ def graph(num_points: int,
     plt.axhline(y=y_norm.max()/2, color='red', linestyle='--', linewidth=0.5, label='FWHM')
     plt.axvline(x=x_1fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
     plt.axvline(x=x_2fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
-    plt.title("Normalized Gaussian Pulse")
+    plt.title(name)
     plt.xlabel("Time (ns)")
     plt.ylabel("Amplitude (0-255)")
     plt.minorticks_on()
@@ -46,11 +50,11 @@ def graph(num_points: int,
     #debug
     print("length of y_norm = ", len(y_norm))
     # Write to CSV
-    with open(output_csv, 'w', newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerow(y_norm)
-
-    print(f"Wrote {num_points} samples to {output_csv}")
+    if output_csv!=None:
+        with open(output_csv, 'w', newline='') as f:
+            writer = csv.writer(f, delimiter=';')
+            writer.writerow(y_norm)
+            print(f"Wrote {num_points} samples to {output_csv}")
 
 def compute_crc_from_csv(csv_file: str):
     amplitude = bytearray()
@@ -88,10 +92,12 @@ def main():
     print("sigma2 = ", sigma2)
     #
     mu = ratio * (((((((((((((((((((t_delay))))))))))))))))))) + sigma2
+    
     #just for debugging now
     x_1fwhm = (mu - sigma*np.sqrt(2*np.log(2)))/ratio
     x_2fwhm = (mu + sigma*np.sqrt(2*np.log(2)))/ratio
     print("width = ", (x_2fwhm-x_1fwhm))
+
     if ratio<0.5:
         mu = FIXED_WIDTH/2 - mu
     else:
@@ -101,17 +107,40 @@ def main():
 
     def gauss(x):
         return height * np.exp(-((x + mu) ** 2) / (2 * sigma ** 2))
+    
+    def u(x):
+        return a / 2 * np.arccos(1 - 2 * ct * np.exp(-(x+mu)**2 / (2 * sigma ** 2)))
+    
+    def I_opt(x):
+        return np.sin(u(x) / a)**2
+
 
     output_csv = 'waveform.csv'
     graph(num_points=TOTAL_BYTES,
           func=gauss,
+          output_csv= None,
+          x_1fwhm = x_1fwhm,
+          x_2fwhm = x_2fwhm,
+          x_start=-FIXED_WIDTH / 2,
+          x_end=+FIXED_WIDTH / 2,
+          name = "Gaussian pulse - what we should get")
+    graph(num_points=TOTAL_BYTES,
+          func=u,
           output_csv=output_csv,
           x_1fwhm = x_1fwhm,
           x_2fwhm = x_2fwhm,
           x_start=-FIXED_WIDTH / 2,
-          x_end=+FIXED_WIDTH / 2)
+          x_end=+FIXED_WIDTH / 2,
+          name = "u(t)")
+    graph(num_points=TOTAL_BYTES,
+          func=I_opt,
+          output_csv=None,
+          x_1fwhm = x_1fwhm,
+          x_2fwhm = x_2fwhm,
+          x_start=-FIXED_WIDTH / 2,
+          x_end=+FIXED_WIDTH / 2,
+          name = "I_opt calc from u(t)")
 
-    compute_crc_from_csv(output_csv)
 
 
 if __name__ == '__main__':
