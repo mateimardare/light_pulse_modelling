@@ -13,7 +13,7 @@ BYTE_TIME_NS = 0.2          # Each byte = 0.2ns
 FIXED_WIDTH = 12            # Width of waveform in units (arbitrary)
 
 a = 3/np.pi
-ct = 1 #VERY IMPORTANT FOR OPTICAL INTENSITY
+VMAX = 1#VERY IMPORTANT FOR OPTICAL INTENSITY
 
 def graph(num_points: int,
           func,
@@ -22,20 +22,20 @@ def graph(num_points: int,
           x_2fwhm,
           x_start,
           x_end,
-          name: str):
+          phi):
     x = np.linspace(x_start, x_end, num_points)
     y = func(x)
     #debug
     print("Minimum y / Maximum y =", y.min() / y.max())
     x = np.linspace(0,102.4, 512)
-    y_norm = np.clip(np.floor((y / y.max()) * 255), 0, 255).astype(int)
+    y_norm = np.clip(np.floor((y / y.max()) * 255 * phi), 0, 255).astype(int)
     
     # Plot
     plt.plot(x, y_norm)
     plt.axhline(y=y_norm.max()/2, color='red', linestyle='--', linewidth=0.5, label='FWHM')
     plt.axvline(x=x_1fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
     plt.axvline(x=x_2fwhm,  color='red', linestyle='--', linewidth=0.5, label='FWHM')
-    plt.title(name)
+    #plt.title(name)
     plt.xlabel("Time (ns)")
     plt.ylabel("Amplitude (0-255)")
     plt.minorticks_on()
@@ -80,7 +80,7 @@ def main():
     # Inputs
     t_pulse = int(input("Pulse duration - FWHM (ns): "))
     t_delay = int(input("Pulse delay (ns, max 102.4 - duration): "))
-
+    IMAX = float(input("Maximum laser intensity, between 0 and 1 prefferably: "))
     period = TOTAL_BYTES * BYTE_TIME_NS
     ratio = FIXED_WIDTH / period
     eps = 1e-4
@@ -92,7 +92,8 @@ def main():
     print("sigma2 = ", sigma2)
     #
     mu = ratio * (((((((((((((((((((t_delay))))))))))))))))))) + sigma2
-    
+    phi = (0.5*a/VMAX)*np.arccos(0.5-IMAX)
+    print("phi = ", phi)
     #just for debugging now
     x_1fwhm = (mu - sigma*np.sqrt(2*np.log(2)))/ratio
     x_2fwhm = (mu + sigma*np.sqrt(2*np.log(2)))/ratio
@@ -109,10 +110,10 @@ def main():
         return height * np.exp(-((x + mu) ** 2) / (2 * sigma ** 2))
     
     def u(x):
-        return a / 2 * np.arccos(1 - 2 * ct * np.exp(-(x+mu)**2 / (2 * sigma ** 2)))
+        return a / (2*phi) * np.arccos(1 - 2 *  np.exp(-(x+mu)**2 / (2 * sigma ** 2)))
     
     def I_opt(x):
-        return np.sin(u(x) / a)**2
+        return np.sin(phi* u(x) / a)**2
 
 
     output_csv = 'waveform.csv'
@@ -123,7 +124,7 @@ def main():
           x_2fwhm = x_2fwhm,
           x_start=-FIXED_WIDTH / 2,
           x_end=+FIXED_WIDTH / 2,
-          name = "Gaussian pulse - what we should get")
+          phi = 1)
     graph(num_points=TOTAL_BYTES,
           func=u,
           output_csv=output_csv,
@@ -131,7 +132,7 @@ def main():
           x_2fwhm = x_2fwhm,
           x_start=-FIXED_WIDTH / 2,
           x_end=+FIXED_WIDTH / 2,
-          name = "u(t)")
+          phi = phi)
     graph(num_points=TOTAL_BYTES,
           func=I_opt,
           output_csv=None,
@@ -139,9 +140,7 @@ def main():
           x_2fwhm = x_2fwhm,
           x_start=-FIXED_WIDTH / 2,
           x_end=+FIXED_WIDTH / 2,
-          name = "I_opt calc from u(t)")
-
-
+          phi = 1)
 
 if __name__ == '__main__':
     main()
