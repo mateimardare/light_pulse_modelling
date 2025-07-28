@@ -7,5 +7,5 @@ Key features:
 > calculates the delay accordingly, with a certain error estimation eps (modifiable);
 
 Future improvements:
-> at the moment, th epeak is normalized, so it reaches the maximum voltage the modulator has been set to. Rather than doing so, given a constant parameter with the maximum voltage, to modelate the pulse in such way that it only reaches the amount desired by the user
+> at the moment, the peak is normalized, so it reaches the maximum voltage the modulator has been set to. Rather than doing so, given a constant parameter with the maximum voltage, to modelate the pulse in such way that it only reaches the amount desired by the user
 
